@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Header from '../components/header';
 import CategoryList from '../components/categoryList';
 import { User, Category, Activity } from '../types';
-import { Select, SelectItem, user} from '@nextui-org/react';
+import { Select, SelectItem } from '@nextui-org/react';
+
 export default function Dashboard() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
@@ -39,7 +40,6 @@ export default function Dashboard() {
         }
         const data: Category[] = await response.json();
 
-        // Fetch activities for each category
         const categoriesWithActivities = await Promise.all(
           data.map(async (category) => {
             const activitiesResponse = await fetch(`http://localhost:3002/personal_manager/activities/get_activity_user/${category.id}`);
@@ -67,8 +67,8 @@ export default function Dashboard() {
       <Header />
       <main className="flex flex-col items-center justify-start min-h-screen p-4">
         <div className="w-full max-w-md flex">
-
-          <Select aria-label="Select a user"
+          <Select
+            aria-label="Select a user"
             placeholder="Select a user" 
             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             onChange={(e) => {
@@ -83,9 +83,8 @@ export default function Dashboard() {
               </SelectItem>
             ))}
           </Select>
-          
         </div>
-        {selectedUser && <CategoryList categories={categories} setCategories={setCategories} />}
+        {selectedUser && <CategoryList categories={categories} setCategories={setCategories} setUser={selectedUser.id} />}
       </main>
     </div>
   );

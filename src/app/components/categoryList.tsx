@@ -7,14 +7,16 @@ import EditModal from './modal';
 type CategoryProps = {
   categories: Category[];
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
+  setUser: number;
 }
 
-const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories}) => {
+const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories, setUser }) => {
   const [visible, setVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [isEditingCategory, setIsEditingCategory] = useState(false);
+
   const handleAddActivity = (categoryId: number) => {
     const category = categories.find(c => c.id === categoryId);
     setSelectedCategory(category || null);
@@ -65,7 +67,6 @@ const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories}) => 
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(newActivity),
         });
 
         if (!response.ok) {
@@ -90,10 +91,10 @@ const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories}) => 
     }
   };
 
-  const handleUpdateActivityModal = async (id: number, title: string, description: string) => {
-    if (selectedCategory) {
+  const handleUpdateActivityModal = async (title: string, description: string) => {
+    if (selectedActivity && selectedCategory) {
       const updatedActivity = {
-        id,
+        id: selectedActivity.id,
         title,
         description,
         idUser: selectedCategory.idUser,
@@ -157,11 +158,11 @@ const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories}) => 
     }
   };
 
-  const handleSaveCategoryModal = async (title: string, idUser : number) => {
+  const handleSaveCategoryModal = async (title: string) => {
     if (isAddingCategory) {
       const newCategory = {
         name: title,
-        idUser: selectedCategory ? selectedCategory.idUser : 1
+        idUser: setUser
       };
 
       try {
@@ -190,12 +191,11 @@ const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories}) => 
       };
 
       try {
-        const response = await fetch(`http://localhost:3002/personal_manager/categories/${updatedCategory.id}`, {
+        const response = await fetch(`http://localhost:3002/personal_manager/categories/update_category/${updatedCategory.id}/${updatedCategory.name}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(updatedCategory),
         });
 
         if (!response.ok) {
@@ -213,39 +213,40 @@ const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories}) => 
       }
     }
   };
+
   const handleDeleteCategory = async (id: number) => {
     try {
       // Obtenha as atividades associadas à categoria
       const getActivitiesResponse = await fetch(`http://localhost:3002/personal_manager/activities/get_activity_user/${id}`);
-  
+
       if (!getActivitiesResponse.ok) {
         throw new Error('Failed to fetch activities for the category');
       }
-  
+
       const activities = await getActivitiesResponse.json();
-  
+
       // Verifique se existem atividades
       if (activities.length > 0) {
-        return alert("Não é possível excluir a categoria porque ela tem atividades associadas.")
-       
-      }else{
-        // Se não houver atividades, proceda com a exclusão da categoria
-        const response = await fetch(`http://localhost:3002/personal_manager/categories/delete_category/${id}`, {
-          method: 'DELETE',
-        });
-  
-        if (!response.ok) {
-          throw new Error('Failed to delete category');
-        }
-  
-        setCategories((prevCategories) => prevCategories.filter(category => category.id !== id));
-  
+        alert('Cannot delete category because it has associated activities.');
+        return;
       }
-  
+
+      // Se não houver atividades, proceda com a exclusão da categoria
+      const response = await fetch(`http://localhost:3002/personal_manager/categories/delete_category/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete category');
+      }
+
+      setCategories((prevCategories) => prevCategories.filter(category => category.id !== id));
+
     } catch (error) {
       console.error('Failed to delete category:', error);
     }
   };
+
   return (
     <div className="container mx-auto">
       <div className="flex flex-wrap justify-center gap-6">
@@ -259,7 +260,6 @@ const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories}) => 
                   <Plus />
                 </button>
                 <button onClick={() => handleDeleteCategory(category.id)}><Trash className="text-violet-500 hover:text-violet-700" /></button>
-
               </div>
             </div>
             <ul className="list-none">
@@ -270,7 +270,7 @@ const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories}) => 
                     <CardBody>{activity.description}</CardBody>
                     <CardFooter className="flex-row justify-end flex-nowrap">
                       <button onClick={() => handleEditActivity(category.id, activity)}><Pencil className="text-violet-500 hover:text-violet-700" /></button>
-                      <button onClick={()=>handleDeleteActivity(activity.id)}><Trash className="text-violet-500 hover:text-violet-700" /></button>
+                      <button onClick={() => handleDeleteActivity(activity.id)}><Trash className="text-violet-500 hover:text-violet-700" /></button>
                     </CardFooter>
                   </Card>
                 </li>
@@ -287,13 +287,13 @@ const CategoryList: React.FC<CategoryProps> = ({ categories, setCategories}) => 
       <EditModal 
         visible={visible} 
         onClose={() => setVisible(false)} 
-        onSave={isEditingCategory || isAddingCategory ? handleSaveCategoryModal : handleAddActivityModal}
-        item={isEditingCategory || isAddingCategory ? selectedCategory : selectedActivity}
-        isCategory={isEditingCategory || isAddingCategory}
+        onSave={isAddingCategory ? handleSaveCategoryModal : (selectedActivity ? handleUpdateActivityModal : handleAddActivityModal)}
+        item={isAddingCategory ? selectedCategory : selectedActivity}
+        isCategory={isAddingCategory}
       />
-      
     </div>
   );
 };
 
 export default CategoryList;
+
